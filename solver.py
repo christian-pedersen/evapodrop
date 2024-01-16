@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 
 class droplet(UserExpression):
     def eval(self, values, x):
-        epsilon = 10**-3
+        epsilon = 5*10**-5
 
 
         if between(x[0], (0, 1)):
-            values[0] = 0.1*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
+            values[0] = 0.6*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
         else:
             values[0] = epsilon#-99*epsilon/ (1-5) * (x[0]-1) + 100*epsilon
 
@@ -16,9 +16,9 @@ class Solver:
 
     def __init__(self, DT):
         self.dt = Constant(DT)
-        self.a = 10**-4
-        self.hf = 10**-5
-        self.beta = 21
+        self.a = 1e-3#(10**-3)**2 / 0.6**4#10**-4
+        self.hf = 5*10**-5
+        self.beta = 5*10**-3 * 3* 10 / 0.6**4#21
 
     def load_mesh(self, mesh):
         self.nonrefinedmesh = mesh
@@ -37,7 +37,7 @@ class Solver:
             mesh = refine(mesh, cell_markers)
             refine_length *= cut_per_refine
         self.mesh = mesh
-        mesh_file=File("mesh_refined.xml")
+        mesh_file=File("mesh_refined.pvd")
         mesh_file<<self.mesh
 
     def create_function_space_mesh(self):
@@ -46,7 +46,10 @@ class Solver:
         self.U = FunctionSpace(self.mesh, self.elms)
         self.P = FunctionSpace(self.mesh, self.elms)
         self.UP = FunctionSpace(self.mesh, self.mixedelms)
-        self.x__ = IntervalMesh(2000, 0, 3)
+        #self.x__ = IntervalMesh(2000, 0, 3)
+        x__ = self.mesh.coordinates()
+        #x__ = np.asarray([float(x__[kj]) for kj in range(len(x__))])
+        #self.x__ = np.sort(x__)
         #self.V_ = FunctionSpace(self.x__, self.elms)
 
         self.v, self.q = TestFunctions(self.UP)
@@ -77,16 +80,19 @@ class Solver:
 
         u0__ = project(u0_.dx(0), self.U)
 
-        x = np.linspace(0, 3, 251)
-        x = np.concatenate((np.linspace(0, 0.0007, 1), np.linspace(0.00065, 1.2, 1879)), axis=None)
-        x = np.concatenate((x, np.linspace(1.205, 3, 121)), axis=None)
-        # print(x)
+        #x = np.linspace(0, 3, 251)
+        #x = np.concatenate((np.linspace(0, 0.0007, 1), np.linspace(0.0007, 1.2, 2679)), axis=None)
+        #x = np.concatenate((x, np.linspace(1.205, 3, 321)), axis=None)
+        x = self.mesh.coordinates()
+        x = np.asarray([float(x[kj]) for kj in range(len(x))])
+        x = np.sort(x)
+        print(x)
         no =0
-        for xx in self.x__.coordinates():
-            #print(xx[0], x[no])
-            xx[0] = x[no]
-            no += 1
-        x_ = np.logspace(-11,9, 201)
+        # for xx in self.x__.coordinates():
+        #     #print(xx[0], x[no])
+        #     xx[0] = x[no]
+        #     no += 1
+        x_ = np.logspace(-11,9, 301)
         u0k, u0k_ = [],[]
         for xx in range(len(x_)):
             if x_[xx] < max(x):
@@ -109,36 +115,41 @@ class Solver:
 
                 if x_[k_] > max(x):
                     #print(len(u0k))
-                    K_sum += x[k]**2/2./x_[k_] *self.hf**2 / x_[k_]**2 * (-1)
+                    K_sum += x[k]**2/2./x_[k_] *self.hf / x_[k_]**2 * (-1)
 
                 elif x[k] == 0:
                     K_sum += np.pi/2./x_[k_]*3*self.hf*(self.hf/u0k[k_])**2/u0k[k_]**2*u0k_[k_] * (-1)
 
-                elif x_[k_] < 1.001*x[k] and x_[k_] > 0.999*x[k]:
+                elif x_[k_] < 1.00005*x[k] and x_[k_] > 0.99995*x[k]:
                     if x_[k_] == x[k]:
-                        delta = 10**-6
+                        delta = 10**-3
                     else:
                         delta = abs(x_[k_]-x[k])
                     K_sum += x[k]/2 * np.log(delta)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
                     #print(delta, x[k]/2 * np.log(delta))
-                elif x_[k_] <= 0.999*x[k]:
-                    for i in range(70):
+                elif x_[k_] <= 0.99995*x[k]:
+                    for i in range(90):
                         K1_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x_[k_]/x[k])**(2*i)
                         K2_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x_[k_]/x[k])**(2*i) / (1-2*i)
                     K_sum += x[k]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
 
                 else:
-                    for i in range(70):
+                    for i in range(90):
                         K1_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x[k]/x_[k_])**(2*i)
                         K2_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x[k]/x_[k_])**(2*i) / (1-2*i)
                     K_sum += x_[k_]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
+                #print(K_sum)
+                #print("finished loop for k_, K_sum=", K_sum)
+                #if K_sum == 0.0:
+                #    print(x[k], x_[k_])
                 K_intermediate[k_] = 2/np.pi*K_sum
-            #print(K_intermediate)
+                #print(K_intermediate)
+                #kill()
 
             K_series[k] = np.trapz(K_intermediate, x_)
         #K_series[0] = K_series[1] - 0.1*(K_series[1]+K_series[2])
-        self.elms_ = FiniteElement('Lagrange', self.x__.ufl_cell(), degree=1)
-        self.V_ = FunctionSpace(self.x__, self.elms_)
+        self.elms_ = FiniteElement('Lagrange', self.mesh.ufl_cell(), degree=1)
+        self.V_ = FunctionSpace(self.mesh, self.elms_)
         self.K_ = Function(self.V_)
         self.K_.vector().set_local(K_series)
         self.K = interpolate(self.K_, self.U)
@@ -163,7 +174,7 @@ class Solver:
         ds=Measure('ds', domain=self.mesh, subdomain_data=sub_domains)
 
 
-        self.eq1 = inner(self.p*self.r, self.q)*dx + inner(self.r*self.u.dx(0), self.q.dx(0))*dx
-        self.eq2 = inner(self.u*self.r, self.v)*dx - inner(self.u0*self.r, self.v)*dx  - self.dt*inner(self.r*self.u*self.u*self.u*(self.p + self.a**2/self.u**3).dx(0) , self.v.dx(0))*dx + self.dt*inner(self.r*self.u*self.u*self.u*(self.a**2/self.u**3).dx(0) , self.v)*ds - self.beta*self.dt*inner(self.K, self.v.dx(0))*dx + self.beta*self.dt*inner(self.K, self.v)*ds #+ self.dt*inner(self.r*self.u*self.u*self.u*(self.u.dx(0)/self.r + self.b/self.u**3).dx(0) , self.v)*ds
+        self.eq1 = inner(self.p*self.r, self.q)*dx - inner(self.r*self.u.dx(0), self.q.dx(0))*dx + inner(self.r*self.u.dx(0), self.q)*ds
+        self.eq2 = inner(self.u*self.r, self.v)*dx - inner(self.u0*self.r, self.v)*dx  - self.dt*inner(self.r*self.u*self.u*self.u*(self.p + self.a**2/self.u**3).dx(0) , self.v.dx(0))*dx + self.dt*inner(self.r*self.u*self.u*self.u*(self.p + self.a**2/self.u**3).dx(0) , self.v)*ds + self.beta*self.dt*inner(self.K, self.v.dx(0))*dx - self.beta*self.dt*inner(self.K, self.v)*ds #+ self.dt*inner(self.r*self.u*self.u*self.u*(self.u.dx(0)/self.r + self.b/self.u**3).dx(0) , self.v)*ds
 
         self.eq = self.eq1 + self.eq2
