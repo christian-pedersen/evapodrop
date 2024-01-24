@@ -110,7 +110,7 @@ class Solver:
 
                 if x_[k_] > max(x):
                     #print(len(u0k))
-                    K_sum += x[k]**2/2./x_[k_] *self.hf**2 / x_[k_]**2 * (-1)
+                    K_sum += x[k]**2/2./x_[k_] * 1 / x_[k_]**2 #* (-1)*self.hf**2 
 
                 elif x[k] == 0:
                     K_sum += np.pi/2./x_[k_]*3*self.hf*(self.hf/u0k[k_])**2/u0k[k_]**2*u0k_[k_] * (-1)
@@ -127,13 +127,15 @@ class Solver:
               #          K1_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x_[k_]/x[k])**(2*i)
                #         K2_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x_[k_]/x[k])**(2*i) / (1-2*i)
                 #    K_sum += x[k]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
-                    K1_sum = 2/np.pi*(ellipk((x_[k_]/x[k])**2)-ellipe((x_[k_]/x[k])**2))
+                    K1_sum = (ellipk((x_[k_]/x[k])**2)-ellipe((x_[k_]/x[k])**2))
                     K2_sum=0
+                    K_sum += x[k]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
+
                 else:
                   #  for i in range(70):
                    #     K1_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x[k]/x_[k_])**(2*i)
                     #    K2_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x[k]/x_[k_])**(2*i) / (1-2*i)
-                    K1_sum = 2/np.pi*(ellipk((x[k]/x_[k_])**2)-ellipe((x[k]/x_[k_])**2))
+                    K1_sum = (ellipk((x[k]/x_[k_])**2)-ellipe((x[k]/x_[k_])**2))
                     K2_sum=0
                     K_sum += x_[k_]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
                 K_intermediate[k_] = 2/np.pi*K_sum
