@@ -2,6 +2,7 @@ from solver import Solver
 from dolfin import *
 import matplotlib.pyplot as plt
 import numpy as np
+import time as timer
 
 folder = 'results/'
 DT = 1e-8
@@ -11,7 +12,7 @@ number_of_refine = 2
 bottom_point = 1
 refine_length = 0.2
 cut_per_refine = 0.5
-endT = 100
+endT = .1
 
 Problem = Solver(DT)
 Problem.load_mesh(nonrefinedmesh)
@@ -23,9 +24,11 @@ Problem.flux()
 Problem.formulate_problem()
 
 coord = Problem.mesh.coordinates()
-
 frame = 0
 
+
+###
+start_t = timer.time()
 ### OPTIONAL:
 # write initial condition to csv
 h_, p_ = Problem.up0.split(deepcopy=True)
@@ -42,7 +45,6 @@ timeframe.write('x\t height \t pressure \t flux \n')
 for position in range(len(coord)):
     timeframe.write('%.8f\t %.10f\t %.10f\t %.10f\n' %(float(coord[position]), h_(float(coord[position])), p_(float(coord[position])), K_(float(coord[position]))))
 timeframe.close()
-
 
 while time < endT:
 
@@ -69,9 +71,9 @@ while time < endT:
 
     Problem.up0.assign(Problem.up)
     Problem.flux()
-    
 
     DT *= 1.05
     Problem.dt.assign(DT)
 
-
+end_t = timer.time()
+print(end_t-start_t)
