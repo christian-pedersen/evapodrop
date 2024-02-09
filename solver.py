@@ -6,10 +6,8 @@ from scipy.special import ellipk, ellipe
 class droplet(UserExpression):
     def eval(self, values, x):
         epsilon = 10**-3
-
-
         if between(x[0], (0, 1)):
-            values[0] = 0.1*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
+            values[0] = 0.6*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
         else:
             values[0] = epsilon#-99*epsilon/ (1-5) * (x[0]-1) + 100*epsilon
 
@@ -17,9 +15,9 @@ class Solver:
 
     def __init__(self, DT):
         self.dt = Constant(DT)
-        self.a = 10**-4
+        self.a = 10**-3
         self.hf = 10**-5
-        self.beta = 21
+        self.beta = 5e-3
 
     def load_mesh(self, mesh):
         self.nonrefinedmesh = mesh
@@ -110,7 +108,7 @@ class Solver:
 
                 if x_[k_] > max(x):
                     #print(len(u0k))
-                    K_sum += x[k]**2/2./x_[k_] * 1 / x_[k_]**2 #* (-1)*self.hf**2 
+                    K_sum += x[k]**2/2./x_[k_] * 1 / x_[k_]**2  / (1+2/3/np.pi/x_[k_])**4 #* (-1)*self.hf**2 
 
                 elif x[k] == 0:
                     K_sum += np.pi/2./x_[k_]*3*self.hf*(self.hf/u0k[k_])**2/u0k[k_]**2*u0k_[k_] * (-1)
@@ -168,7 +166,11 @@ class Solver:
         ds=Measure('ds', domain=self.mesh, subdomain_data=sub_domains)
 
 
-        self.eq1 = inner(self.p*self.r, self.q)*dx + inner(self.r*self.u.dx(0), self.q.dx(0))*dx
-        self.eq2 = inner(self.u*self.r, self.v)*dx - inner(self.u0*self.r, self.v)*dx  - self.dt*inner(self.r*self.u*self.u*self.u*(self.p + self.a**2/self.u**3).dx(0) , self.v.dx(0))*dx + self.dt*inner(self.r*self.u*self.u*self.u*(self.a**2/self.u**3).dx(0) , self.v)*ds - self.beta*self.dt*inner(self.K, self.v.dx(0))*dx + self.beta*self.dt*inner(self.K, self.v)*ds #+ self.dt*inner(self.r*self.u*self.u*self.u*(self.u.dx(0)/self.r + self.b/self.u**3).dx(0) , self.v)*ds
+        self.eq1 = inner(self.p*self.r, self.q)*dx +\
+                     inner(self.r*self.u.dx(0), self.q.dx(0))*dx
+        # Note: + sign since there is +p below instead of -p
+        self.eq2 = inner(self.u*self.r, self.v)*dx - inner(self.u0*self.r, self.v)*dx  - self.dt*inner(self.r*self.u*self.u*self.u*(self.p + self.a**2/self.u**3).dx(0) , self.v.dx(0))*dx + \
+        - self.beta*self.dt*inner(self.K, self.v.dx(0))*dx + self.beta*self.dt*inner(self.K, self.v)*ds 
+                #self.dt*inner(self.r*self.u*self.u*self.u*(self.a**2/self.u**3).dx(0) , self.v)*ds \ I think that this term is 0 bcs of axis-symmetry (u.dx = 0 on ds).
 
         self.eq = self.eq1 + self.eq2

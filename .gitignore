@@ -1,0 +1,7 @@
+results
+*.xml
+__pycache__
+.ipynb_checkpoints
+time_tests.txt
+*.png
+
