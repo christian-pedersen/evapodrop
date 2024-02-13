@@ -7,7 +7,7 @@ class droplet(UserExpression):
     def eval(self, values, x):
         epsilon = 10**-3
         if between(x[0], (0, 1)):
-            values[0] = 0.6*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
+            values[0] = 0.1*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
         else:
             values[0] = epsilon#-99*epsilon/ (1-5) * (x[0]-1) + 100*epsilon
 
@@ -77,16 +77,19 @@ class Solver:
 
         u0__ = project(u0_.dx(0), self.U)
 
-        x = np.linspace(0, 3, 251)
-        x = np.concatenate((np.linspace(0, 0.0007, 1), np.linspace(0.00065, 1.2, 1879)), axis=None)
-        x = np.concatenate((x, np.linspace(1.205, 3, 121)), axis=None)
-        # print(x)
-        no =0
-        for xx in self.x__.coordinates():
-            #print(xx[0], x[no])
-            xx[0] = x[no]
-            no += 1
-        x_ = np.logspace(-11,9, 201)
+        #x = np.linspace(0, 3, 251)
+        #x = np.concatenate((np.linspace(0, 0.0007, 1), np.linspace(0.00065, 1.2, 1879)), axis=None)
+        #x = np.concatenate((x, np.linspace(1.205, 3, 121)), axis=None)
+        x = self.mesh.coordinates()
+        x = np.asarray([float(x[kj]) for kj in range(len(x))])
+        x = np.sort(x)
+        # # print(x)
+        # no =0
+        # for xx in x:#self.x__.coordinates():
+        #     #print(xx[0], x[no])
+        #     xx[0] = x[no]
+        #     no += 1
+        x_ = np.logspace(-11,8, 201)
         u0k, u0k_ = [],[]
         for xx in range(len(x_)):
             if x_[xx] < max(x):
@@ -136,14 +139,17 @@ class Solver:
                     #    K2_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x[k]/x_[k_])**(2*i) / (1-2*i)
                     K1_sum = (ellipk((x[k]/x_[k_])**2)-ellipe((x[k]/x_[k_])**2))
                     K2_sum=0
+                    #print(K1_sum)
                     K_sum += x_[k_]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
                 K_intermediate[k_] = 2/np.pi*K_sum
             #print(K_intermediate)
 
             K_series[k] = np.trapz(K_intermediate, x_)
         #K_series[0] = K_series[1] - 0.1*(K_series[1]+K_series[2])
-        self.elms_ = FiniteElement('Lagrange', self.x__.ufl_cell(), degree=1)
-        self.V_ = FunctionSpace(self.x__, self.elms_)
+        #self.elms_ = FiniteElement('Lagrange', self.x__.ufl_cell(), degree=1)
+        #self.V_ = FunctionSpace(self.x__, self.elms_)
+        self.elms_ = FiniteElement('Lagrange', self.mesh.ufl_cell(), degree=1)
+        self.V_ = FunctionSpace(self.mesh, self.elms_)
         self.K_ = Function(self.V_)
         self.K_.vector().set_local(K_series)
         self.K.assign(interpolate(self.K_, self.U))
