@@ -54,6 +54,7 @@ class Solver:
 
         self.up = Function(self.UP)
         self.up0 = Function(self.UP)
+        self.K = Function(self.U)
         #self.K_ = Function(self.V_)
         init = droplet()
         init = interpolate(init, self.U)
@@ -145,7 +146,7 @@ class Solver:
         self.V_ = FunctionSpace(self.x__, self.elms_)
         self.K_ = Function(self.V_)
         self.K_.vector().set_local(K_series)
-        self.K = interpolate(self.K_, self.U)
+        self.K.assign(interpolate(self.K_, self.U))
 
         #for i in range(len(self.x__.coordinates())):
         #    print(self.x__.coordinates()[i], self.K_(self.x__.coordinates()[i]), self.K(self.x__.coordinates()[i]))
