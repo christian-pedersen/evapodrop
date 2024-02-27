@@ -4,20 +4,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time as timer
 import sys
-folder = 'results2/'
+folder = 'results4/'
 DT = 1e-6
 time = 0
 nonrefinedmesh = IntervalMesh(300, 0, 3)
-number_of_refine = 10
+number_of_refine = 2
 bottom_point = 1
-refine_length = 0.2
+refine_length = 0.5
 cut_per_refine = 0.5
 endT = 70
 
 Problem = Solver(DT)
 Problem.load_mesh(nonrefinedmesh)
 Problem.refine_mesh(number_of_refine, bottom_point, refine_length, cut_per_refine)
-Problem.refine_mesh(number_of_refine, 0, 0.5, cut_per_refine)
+#Problem.refine_mesh(number_of_refine, 0, .5, cut_per_refine)
 Problem.create_function_space_mesh()
 Problem.initialize_field()
 Problem.split_functions()
@@ -36,7 +36,7 @@ pb = NonlinearVariationalProblem(Problem.eq, Problem.up, J=J)
 sv = NonlinearVariationalSolver(pb)
 prm = sv.parameters
 #prm['newton_solver']['relative_tolerance'] = 1e-9
-#prm['newton_solver']['absolute_tolerance'] = 1e-8
+#prm['newton_solver']['absolute_tolerance'] = 5e-10
 
 ### OPTIONAL:
 # write initial condition to csv
@@ -63,7 +63,9 @@ while time < endT:
 #solve(Problem.eq == 0, Problem.up)
     no, cvg = sv.solve() # solve
     if no < 5:
-        DT = np.min([DT*1.5, 1e-1])
+        DT = np.min([DT*1.5, 5e-2])
+        if DT > time/4:
+            DT = np.max([time/4, 1e-6])
         Problem.dt.assign(Constant(DT))
     else:
         dtp = np.max([DT/2, 1e-6])
