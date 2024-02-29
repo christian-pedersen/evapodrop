@@ -2,22 +2,23 @@ from fenics import *
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import ellipk, ellipe
+from scipy.signal import savgol_filter
 
 class droplet(UserExpression):
     def eval(self, values, x):
-        epsilon = 10**-3
+        epsilon = 1e-4
         if between(x[0], (0, 1)):
-            values[0] = 0.1*(1 - x[0]**2)**2 + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
+            values[0] = (1-epsilon)*(1 - x[0]**2) + epsilon#((cos(0.5*x[0]*np.pi)*cos(0.5*x[0]*np.pi))+100*epsilon)/(1+100*epsilon)#np.sqrt(1 - x[0]**2) + epsilon#init_u(abs(x[0]))
         else:
-            values[0] = epsilon#-99*epsilon/ (1-5) * (x[0]-1) + 100*epsilon
+            values[0] = epsilon #-99*epsilon/ (1-5) * (x[0]-1) + 100*epsilon
 
 class Solver:
 
     def __init__(self, DT):
         self.dt = Constant(DT)
         self.a = 10**-3
-        self.hf = 10**-5
-        self.beta = 5e-3
+        self.hf = 1e-4#5*10**-5
+        self.beta = 1
 
     def load_mesh(self, mesh):
         self.nonrefinedmesh = mesh
@@ -77,18 +78,11 @@ class Solver:
 
         u0__ = project(u0_.dx(0), self.U)
 
-        #x = np.linspace(0, 3, 251)
-        #x = np.concatenate((np.linspace(0, 0.0007, 1), np.linspace(0.00065, 1.2, 1879)), axis=None)
-        #x = np.concatenate((x, np.linspace(1.205, 3, 121)), axis=None)
+
         x = self.mesh.coordinates()
         x = np.asarray([float(x[kj]) for kj in range(len(x))])
         x = np.sort(x)
-        # # print(x)
-        # no =0
-        # for xx in x:#self.x__.coordinates():
-        #     #print(xx[0], x[no])
-        #     xx[0] = x[no]
-        #     no += 1
+
         x_ = np.logspace(-11,8, 201)
         u0k, u0k_ = [],[]
         for xx in range(len(x_)):
@@ -96,6 +90,8 @@ class Solver:
                 u0k.append(u0_(x_[xx]))
                 u0k_.append(u0__(x_[xx]))
         u0k, u0k_ = np.asarray(u0k), np.asarray(u0k_)
+        u0k = savgol_filter(u0k, 21, 3)
+        u0k_ = savgol_filter(u0k_, 21, 3)
         u0 = np.asarray([u0_(x[i]) for i in range(len(x))])
         u0_ = np.asarray([u0__(x[i]) for i in range(len(x))])
 
@@ -111,19 +107,18 @@ class Solver:
                 K_sum = 0
 
                 if x_[k_] > max(x):
-                    #print(len(u0k))
-                    K_sum += x[k]**2/2./x_[k_] * 1 / x_[k_]**2  / (1+2/3/np.pi/x_[k_])**4 #* (-1)*self.hf**2 
+                    K_sum += x[k]**2/2./x_[k_] * 1 / x_[k_]**2 / (1+2/3/np.pi/x_[k_])**4 #* (-1)*self.hf**2 
 
                 elif x[k] == 0:
-                    K_sum += np.pi/2./x_[k_]*3*self.hf*(self.hf/u0k[k_])**2/u0k[k_]**2*u0k_[k_] * (-1)
+                    K_sum += np.pi/2./x_[k_]*3*self.hf*self.hf**2/(u0k[k_])**4*u0k_[k_] * (-1)
 
                 elif x_[k_] < 1.001*x[k] and x_[k_] > 0.999*x[k]:
                     if x_[k_] == x[k]:
                         delta = 10**-6
                     else:
                         delta = abs(x_[k_]-x[k])
-                    K_sum += x[k]/2 * np.log(delta)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
-                    #print(delta, x[k]/2 * np.log(delta))
+                    K_sum += x[k]/2 * np.log(delta)*3*self.hf**3/(u0k[k_])**4*(-1)*u0k_[k_]
+
                 elif x_[k_] <= 0.999*x[k]:
              #       for i in range(70):
               #          K1_sum += (np.math.factorial(2*i) / 2**(2*i) / (np.math.factorial(i))**2)**2 * (x_[k_]/x[k])**(2*i)
@@ -131,7 +126,7 @@ class Solver:
                 #    K_sum += x[k]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
                     K1_sum = (ellipk((x_[k_]/x[k])**2)-ellipe((x_[k_]/x[k])**2))
                     K2_sum=0
-                    K_sum += x[k]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
+                    K_sum += x[k]*(K1_sum - K2_sum)*3*self.hf**3/(u0k[k_])**4*(-1)*u0k_[k_]
 
                 else:
                   #  for i in range(70):
@@ -140,12 +135,13 @@ class Solver:
                     K1_sum = (ellipk((x[k]/x_[k_])**2)-ellipe((x[k]/x_[k_])**2))
                     K2_sum=0
                     #print(K1_sum)
-                    K_sum += x_[k_]*(K1_sum - K2_sum)*3*self.hf*(self.hf/u0k[k_])**2*(-1)/u0k[k_]**2*u0k_[k_]
+                    K_sum += x_[k_]*(K1_sum - K2_sum)*3*self.hf**3/(u0k[k_])**4*(-1)*u0k_[k_]
                 K_intermediate[k_] = 2/np.pi*K_sum
-            #print(K_intermediate)
 
             K_series[k] = np.trapz(K_intermediate, x_)
-        #K_series[0] = K_series[1] - 0.1*(K_series[1]+K_series[2])
+
+        K_series[0] = K_series[1] - 0.1*(K_series[1]+K_series[2])
+        K_series = savgol_filter(K_series, 21, 3) # To smooth some waves
         #self.elms_ = FiniteElement('Lagrange', self.x__.ufl_cell(), degree=1)
         #self.V_ = FunctionSpace(self.x__, self.elms_)
         self.elms_ = FiniteElement('Lagrange', self.mesh.ufl_cell(), degree=1)
@@ -154,29 +150,24 @@ class Solver:
         self.K_.vector().set_local(K_series)
         self.K.assign(interpolate(self.K_, self.U))
 
-        #for i in range(len(self.x__.coordinates())):
-        #    print(self.x__.coordinates()[i], self.K_(self.x__.coordinates()[i]), self.K(self.x__.coordinates()[i]))
-
 
     def formulate_problem(self):
 
         self.r = Expression('sqrt(x[0]*x[0])', degree=1)
 
         left = CompiledSubDomain('on_boundary && sqrt(x[0]*x[0]) < DOLFIN_EPS')
-        right = CompiledSubDomain('on_boundary && sqrt(x[0]*x[0]) > 2')
+        right = CompiledSubDomain('on_boundary && sqrt(x[0]*x[0]) > 2.5')
         sub_domains = MeshFunction("size_t", self.mesh, self.mesh.topology().dim() - 1)
         sub_domains.set_all(0)
-
 
         left.mark(sub_domains, 1)
         right.mark(sub_domains, 2)
         ds=Measure('ds', domain=self.mesh, subdomain_data=sub_domains)
 
-
         self.eq1 = inner(self.p*self.r, self.q)*dx +\
                      inner(self.r*self.u.dx(0), self.q.dx(0))*dx
         # Note: + sign since there is +p below instead of -p
-        self.eq2 = inner(self.u*self.r, self.v)*dx - inner(self.u0*self.r, self.v)*dx  - self.dt*inner(self.r*self.u*self.u*self.u*(self.p + self.a**2/self.u**3).dx(0) , self.v.dx(0))*dx + \
+        self.eq2 = inner(self.u*self.r, self.v)*dx - inner(self.u0*self.r, self.v)*dx  - self.dt*inner(1/3*self.r*self.u*self.u*self.u*(self.p + self.a**2/(self.u**3)).dx(0) , self.v.dx(0))*dx + \
         - self.beta*self.dt*inner(self.K, self.v.dx(0))*dx + self.beta*self.dt*inner(self.K, self.v)*ds 
                 #self.dt*inner(self.r*self.u*self.u*self.u*(self.a**2/self.u**3).dx(0) , self.v)*ds \ I think that this term is 0 bcs of axis-symmetry (u.dx = 0 on ds).
 

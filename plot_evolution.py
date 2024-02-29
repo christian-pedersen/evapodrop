@@ -4,7 +4,7 @@ import matplotlib as mpl
 import pandas as pd
 import glob
 
-path = './results/*.csv'
+path = './results4/*.csv'
 
 def collect_data(path):
     files = glob.glob(path)
@@ -31,10 +31,10 @@ def collect_data(path):
 
 times, vol, x, h, p, K = collect_data(path)
 
-fig, axs = plt.subplots(1, 2)
+fig, axs = plt.subplots(1, 3)
 cm = mpl.cm.viridis(np.linspace(0, 1, len(x)//5+1))
-for i in range(0, len(x), 5):
+for i in range(0, len(x), 1):
     axs[0].plot(x[i], h[i], c=cm[i//5])
-    axs[1].plot(x[i], K[i], c=cm[i//5])
-
+    axs[1].plot(x[i], K[i], c=cm[i//5], marker='.')
+    axs[2].plot(times[i], vol[i], marker='.', c=cm[i//5])
 fig.show()
